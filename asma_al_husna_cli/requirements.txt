@@ -1,0 +1,10 @@
+# Core CLI framework
+typer>=0.9.0
+typer[all]  # Includes rich support
+
+# Beautiful terminal UI
+rich>=13.7.0
+
+# Additional dependencies for potential enhancements
+python-bidi>=0.4.2  # For proper Arabic text handling (optional)
+pyfiglet>=1.0.2     # For ASCII art generation (optional)
