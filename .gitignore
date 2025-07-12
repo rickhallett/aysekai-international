@@ -101,8 +101,8 @@ $RECYCLE.BIN/
 .directory
 
 # Claude Code / MCP
-.claude/mcp.json
-.claude/hooks/
+# .claude/mcp.json
+# .claude/hooks/
 
 # Project Specific
 data/logs/
