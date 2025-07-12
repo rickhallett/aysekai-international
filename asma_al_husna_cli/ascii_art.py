@@ -77,13 +77,16 @@ As the mystics say: "He who knows himself, knows his Lord."
 Through contemplation of these names, we polish the mirror of the heart.
 """
 
+
 def get_intro_art() -> str:
     """Returns the complete introduction art and text"""
     return MOSQUE_ART + "\n" + SALUTATION_TEXT + "\n" + WELCOME_MESSAGE
 
+
 def get_baghdad_art() -> str:
     """Returns the Baghdad city art"""
     return BAGHDAD_ART + "\n" + SALUTATION_TEXT
+
 
 def get_divider(style: str = "ornate") -> str:
     """Returns decorative dividers"""
@@ -93,27 +96,31 @@ def get_divider(style: str = "ornate") -> str:
         "double": "═" * 50,
         "stars": "✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦",
         "arabic": "﴿ ﴾ ﴿ ﴾ ﴿ ﴾ ﴿ ﴾ ﴿ ﴾ ﴿ ﴾ ﴿ ﴾",
-        "geometric": "◈──────◆──────◈──────◆──────◈"
+        "geometric": "◈──────◆──────◈──────◆──────◈",
     }
     return dividers.get(style, dividers["ornate"])
+
 
 def get_frame_top() -> str:
     """Returns the top of a decorative frame"""
     return "╔═══════════════════════════════════════════════════════════════╗"
 
+
 def get_frame_bottom() -> str:
     """Returns the bottom of a decorative frame"""
     return "╚═══════════════════════════════════════════════════════════════╝"
+
 
 def center_text(text: str, width: int = 65) -> str:
     """Centers text within given width"""
     return text.center(width)
 
+
 def frame_text(text: str, width: int = 63) -> str:
     """Frames text with decorative borders"""
-    lines = text.split('\n')
+    lines = text.split("\n")
     framed = []
-    
+
     framed.append(get_frame_top())
     for line in lines:
         if len(line) > width:
@@ -131,5 +138,5 @@ def frame_text(text: str, width: int = 63) -> str:
         else:
             framed.append(f"║ {line.ljust(width)} ║")
     framed.append(get_frame_bottom())
-    
-    return '\n'.join(framed)
+
+    return "\n".join(framed)

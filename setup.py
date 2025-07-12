@@ -5,7 +5,7 @@ setup(
     version="0.1.0",
     author="Aysekai International",
     description="Islamic meditation CLI using the 99 Beautiful Names of Allah",
-    packages=find_packages(exclude=['tests*', 'scripts*']),
+    packages=find_packages(exclude=["tests*", "scripts*"]),
     install_requires=[
         "typer>=0.9.0",
         "rich>=13.0.0",
