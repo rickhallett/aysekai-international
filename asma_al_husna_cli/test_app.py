@@ -18,12 +18,12 @@ def test_data_loading():
         loader = DataLoader(Path(__file__).parent.parent)
         names = loader.load_all_names()
         print(f"✓ Successfully loaded {len(names)} names")
-        
+
         # Show first few names
         print("\nFirst 5 names:")
         for name in names[:5]:
             print(f"  {name.number}. {name.name_arabic}")
-            
+
         return True
     except Exception as e:
         print(f"✗ Error loading data: {e}")
@@ -35,22 +35,22 @@ def test_randomizer():
     print("\n\nTesting randomizer...")
     try:
         randomizer = UltraRandomizer()
-        
+
         # Test entropy collection
         randomizer.collect_system_entropy()
         randomizer.add_user_entropy("Test intention for randomness")
-        
+
         # Test shuffling
         test_items = list(range(1, 100))
         shuffled = randomizer.ultra_shuffle(test_items, "Test shuffle")
-        
+
         print(f"✓ Randomizer working")
         print(f"  Original first 10: {test_items[:10]}")
         print(f"  Shuffled first 10: {shuffled[:10]}")
-        
+
         # Show entropy report
         print("\n" + randomizer.get_entropy_report())
-        
+
         return True
     except Exception as e:
         print(f"✗ Error in randomizer: {e}")
@@ -64,15 +64,15 @@ def test_selection():
         # Load names
         loader = DataLoader(Path(__file__).parent.parent)
         names = loader.load_all_names()
-        
+
         # Create randomizer and select
         randomizer = UltraRandomizer()
         selected = randomizer.select_one(names, "Test selection process")
-        
+
         print(f"✓ Selected name: {selected.name_arabic}")
         print(f"  Number: {selected.number}")
         print(f"  Brief meaning: {selected.brief_meaning[:50]}...")
-        
+
         return True
     except Exception as e:
         print(f"✗ Error in selection: {e}")
@@ -83,13 +83,9 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Asma al-Husna CLI Test Suite")
     print("=" * 60)
-    
-    tests = [
-        test_data_loading(),
-        test_randomizer(),
-        test_selection()
-    ]
-    
+
+    tests = [test_data_loading(), test_randomizer(), test_selection()]
+
     print("\n" + "=" * 60)
     if all(tests):
         print("✓ All tests passed!")
