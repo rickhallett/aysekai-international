@@ -10,7 +10,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from asma_core import constants, content, parser, csv_handler, validators
+from src.aysekai.utils import constants, content, parser, csv_handler, validators
 
 
 def extract_names_from_original(input_file: Path):
