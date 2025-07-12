@@ -1,12 +1,12 @@
-"""Main CLI entry point - updated with new package structure"""
+"""Main CLI entry point with dependency injection"""
 
 import typer
-from typing import Optional
+from typing import Optional, cast
 from rich import print as rprint
 
-from .path_resolver import get_path_resolver
 from .error_handler import error_boundary, setup_exception_handler
-from ..utils.csv_handler import AsmaCSVReader
+from .dependencies import get_container
+from ..di.interfaces import DataReader, RandomSelector, SessionLogger
 
 # Setup global exception handler
 setup_exception_handler()
@@ -37,32 +37,55 @@ def meditate(
     ),
 ):
     """Begin your daily meditation journey through the 99 Beautiful Names"""
-    # Get path resolver for CSV file access
-    path_resolver = get_path_resolver()
+    # Get dependencies from container
+    container = get_container()
+    data_reader = cast(DataReader, container.get(cast(type, DataReader)))
+    random_selector = cast(RandomSelector, container.get(cast(type, RandomSelector)))
+    session_logger = cast(SessionLogger, container.get(cast(type, SessionLogger)))
     
-    # Load the divine names using new CSV handler
+    # Load the divine names using injected data reader
     rprint("\n[dim]Loading the sacred names...[/]")
     
-    # Find the first available CSV file
-    csv_files = path_resolver.list_available_csvs()
-    if not csv_files:
-        rprint("[red]No CSV data files found. Please ensure data files are installed.[/]")
+    try:
+        names = data_reader.read_all_names()
+        
+        if not names:
+            rprint("[red]No names could be loaded. Please check the data files.[/]")
+            return
+        
+        rprint(f"[green]Loaded {len(names)} sacred names[/]")
+        
+        # Select name (specific or random)
+        if name_number is not None:
+            try:
+                selected_name = data_reader.get_name_by_number(name_number)
+            except ValueError:
+                rprint(f"[red]Name #{name_number} not found. Please choose 1-99.[/]")
+                return
+        else:
+            # Use random selector with default intention
+            intention = "I seek divine guidance"
+            selected_name = random_selector.select_random_name(names, intention)
+            
+            # Show entropy report if requested
+            if show_entropy:
+                entropy_report = random_selector.get_entropy_report()
+                rprint(f"[dim]Entropy sources: {entropy_report.get('sources', [])}[/]")
+        
+        # Log the session
+        session_logger.log_session(
+            "direct selection" if name_number else "random selection",
+            selected_name.number,
+            selected_name.transliteration
+        )
+        
+        # Display the selected name
+        rprint(f"\n[bold blue]{selected_name.display_name}[/]")
+        rprint(f"[italic]{selected_name.meaning_summary}[/]")
+        
+    except Exception as e:
+        rprint(f"[red]Error during meditation: {str(e)}[/]")
         return
-    
-    reader = AsmaCSVReader(csv_files[0])
-    names = reader.read_all()
-    
-    if not names:
-        rprint("[red]No names could be loaded. Please check the data files.[/]")
-        return
-    
-    rprint(f"[green]Loaded {len(names)} sacred names[/]")
-    
-    # For now, just show the first name as a test
-    if names:
-        name = names[0] if name_number is None else next((n for n in names if n.number == name_number), names[0])
-        rprint(f"\n[bold blue]{name.display_name}[/]")
-        rprint(f"[italic]{name.meaning_summary}[/]")
 
 
 @app.command()
@@ -72,26 +95,31 @@ def list_names(
     end: Optional[int] = typer.Argument(None, help="End number (1-99)"),
 ):
     """List the 99 Beautiful Names of Allah"""
-    # Get data path and load names
-    path_resolver = get_path_resolver()
-    csv_files = path_resolver.list_available_csvs()
+    # Get dependencies from container
+    container = get_container()
+    data_reader = cast(DataReader, container.get(cast(type, DataReader)))
     
-    if not csv_files:
-        rprint("[red]No CSV data files found.[/]")
+    try:
+        # Load names using injected data reader
+        names = data_reader.read_all_names()
+        
+        if not names:
+            rprint("[red]No names could be loaded.[/]")
+            return
+        
+        # Filter by range if specified
+        if start is not None and end is not None:
+            names = [n for n in names if start <= n.number <= end]
+        elif start is not None:
+            names = [n for n in names if n.number >= start]
+        
+        # Display names
+        for name in names:
+            rprint(f"{name.number:2d}. [bold]{name.arabic}[/] ({name.transliteration}) - {name.brief_meaning}")
+    
+    except Exception as e:
+        rprint(f"[red]Error listing names: {str(e)}[/]")
         return
-    
-    reader = AsmaCSVReader(csv_files[0])
-    names = reader.read_all()
-    
-    # Filter by range if specified
-    if start is not None and end is not None:
-        names = [n for n in names if start <= n.number <= end]
-    elif start is not None:
-        names = [n for n in names if n.number >= start]
-    
-    # Display names
-    for name in names:
-        rprint(f"{name.number:2d}. [bold]{name.arabic}[/] ({name.transliteration}) - {name.brief_meaning}")
 
 
 @app.command()
