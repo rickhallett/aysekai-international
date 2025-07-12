@@ -1,0 +1,123 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+.env/
+
+# Environment Variables and Secrets
+.env
+.env.*
+*.env
+!.env.example
+!.env.template
+
+# API Keys and Credentials
+*.key
+*.pem
+*.cert
+credentials.json
+secrets.json
+config.secret.*
+*_secret.*
+*_private.*
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Testing and Coverage
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.tox/
+htmlcov/
+
+# Logs
+*.log
+*.log.*
+logs/
+log/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# Claude Code / MCP
+.claude/mcp.json
+.claude/hooks/
+
+# Project Specific
+data/logs/
+data/temp/
+data/cache/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Session Data
+session_*.json
+*.session
+
+# Private Notes
+notes/
+private/
+confidential/
