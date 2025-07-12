@@ -3,29 +3,34 @@
 import sys
 import functools
 import traceback
+import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Callable, Optional, Type, Any, List
+from typing import Callable, Optional, Any, List
 import time
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 from ..core.exceptions import (
     ValidationError,
     DataError,
-    ConfigurationError,
+    SystemError,
+    ConfigError
 )
 
 
 # Default console for error output
 _console = Console(stderr=True)
+console = _console
+
+# Logger for error details
+logger = logging.getLogger(__name__)
 
 
-def format_user_error(error: Exception) -> str:
+def format_user_friendly_message(error: Exception) -> str:
     """
-    Format error message for user display.
+    Format error message for user display, removing technical details.
     
     Args:
         error: Exception to format
@@ -33,32 +38,59 @@ def format_user_error(error: Exception) -> str:
     Returns:
         User-friendly error message
     """
-    error_messages = {
-        ValidationError: {
-            "prefix": "Input validation failed",
-            "suffix": "Please check your input and try again.",
-        },
-        DataError: {
-            "prefix": "Data access problem",
-            "suffix": "Please ensure the CSV files are properly installed.",
-        },
-        ConfigurationError: {
-            "prefix": "Configuration issue",
-            "suffix": "Please check your settings and environment variables.",
-        },
-    }
+    if isinstance(error, ValidationError):
+        message = error.message
+        
+        # Handle specific technical error messages
+        if "Field 'user_input' failed validation: value must be str" in message:
+            return "Input validation failed. Please enter valid text."
+        
+        # Remove technical field references
+        message = message.replace("Field '", "").replace("' failed validation", "")
+        message = message.replace("value must be str", "Please enter valid text")
+        
+        # Remove field names from start of message
+        if ": " in message and any(field in message.split(": ")[0] for field in ["user_input", "name_number", "intention"]):
+            message = message.split(": ", 1)[1]
+        
+        # Add helpful guidance
+        if "range" in message.lower():
+            message += "\nPlease enter a number between 1 and 99."
+        elif "validation" in message.lower():
+            message += "\nPlease check your input and try again."
+            
+        return message
     
-    # Check if this is one of our specific error types
-    for exc_type in error_messages:
-        if isinstance(error, exc_type):
-            config = error_messages[exc_type]
-            return f"{config['prefix']}: {str(error)}\n\n{config['suffix']}"
+    elif isinstance(error, DataError):
+        return "Unable to load meditation data. Please check data files are available."
     
-    # Generic error
-    return (
-        f"An error occurred: {str(error)}\n\n"
-        "Please try again or report this issue if it persists."
-    )
+    elif isinstance(error, SystemError):
+        return "System error encountered. Please check permissions and environment."
+    
+    elif isinstance(error, ConfigError):
+        return "Configuration error detected. Please check your settings."
+    
+    # Generic error - remove sensitive details
+    message = str(error)
+    if "sensitive data" in message:
+        message = "An error occurred during processing."
+    if "internal error" in message:
+        message = "An unexpected error occurred."
+    
+    return message
+
+
+def format_user_error(error: Exception) -> str:
+    """
+    Format error message for user display (legacy function).
+    
+    Args:
+        error: Exception to format
+        
+    Returns:
+        User-friendly error message
+    """
+    return format_user_friendly_message(error)
 
 
 def log_error(
@@ -105,9 +137,105 @@ def log_error(
     return error_log
 
 
+def handle_validation_error(error: ValidationError, console: Console) -> None:
+    """Handle user input validation errors"""
+    message = format_user_friendly_message(error)
+    console.print(Panel(
+        message,
+        title="Input Error",
+        border_style="yellow"
+    ))
+    log_validation_error(error)
+
+
+def handle_data_error(error: DataError, console: Console, log_file: Optional[Path] = None) -> None:
+    """Handle data loading and processing errors"""
+    message = "Unable to load meditation data. Please check data files."
+    console.print(Panel(message, title="Data Error", border_style="red"))
+    log_data_error(error, log_file)
+
+
+def handle_system_error(error: SystemError, console: Console, log_file: Optional[Path] = None) -> None:
+    """Handle system and environment errors"""
+    message = "System error encountered. Please check permissions and environment."
+    console.print(Panel(message, title="System Error", border_style="red"))
+    log_system_error(error, log_file)
+
+
+def handle_config_error(error: ConfigError, console: Console, log_file: Optional[Path] = None) -> None:
+    """Handle configuration and settings errors"""
+    message = "Configuration error detected. Please check your settings."
+    console.print(Panel(message, title="Configuration Error", border_style="red"))
+    log_config_error(error, log_file)
+
+
+def handle_unexpected_error(error: Exception, console: Console, log_file: Optional[Path] = None) -> None:
+    """Handle unexpected exceptions"""
+    message = "An unexpected error occurred. Please check the logs for details."
+    console.print(Panel(message, title="Application Error", border_style="red"))
+    log_unexpected_error(error, log_file)
+
+
+def log_validation_error(error: ValidationError) -> None:
+    """Log validation error details"""
+    logger.warning(f"Validation error: {error.format_for_logging()}")
+
+
+def log_data_error(error: DataError, log_file: Optional[Path] = None) -> None:
+    """Log data error details"""
+    logger.error(f"Data error: {error.format_for_logging()}")
+    if log_file:
+        log_error(error, log_file)
+
+
+def log_system_error(error: SystemError, log_file: Optional[Path] = None) -> None:
+    """Log system error details"""
+    logger.error(f"System error: {error.format_for_logging()}")
+    if log_file:
+        log_error(error, log_file)
+
+
+def log_config_error(error: ConfigError, log_file: Optional[Path] = None) -> None:
+    """Log configuration error details"""
+    logger.error(f"Config error: {error.format_for_logging()}")
+    if log_file:
+        log_error(error, log_file)
+
+
+def log_unexpected_error(error: Exception, log_file: Optional[Path] = None) -> None:
+    """Log unexpected error details"""
+    logger.critical(f"Unexpected error: {type(error).__name__}: {error}")
+    if log_file:
+        log_error(error, log_file)
+
+
+def setup_global_exception_handler() -> None:
+    """Install global exception handler for unhandled exceptions"""
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        
+        logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
+        console.print(Panel(
+            "[red]An unexpected error occurred. Please check the logs for details.[/]",
+            title="Application Error",
+            border_style="red"
+        ))
+    
+    sys.excepthook = handle_exception
+
+
+def get_log_file() -> Path:
+    """Get the default log file path"""
+    return Path.home() / ".aysekai" / "error.log"
+
+
 def error_boundary(
     console: Optional[Console] = None,
-    error_log: Optional[Path] = None
+    error_log: Optional[Path] = None,
+    log_file: Optional[Path] = None,
+    show_technical_details: bool = False
 ) -> Callable:
     """
     Decorator for global error handling with user-friendly messages.
@@ -122,6 +250,9 @@ def error_boundary(
     if console is None:
         console = _console
     
+    # Use log_file parameter if provided, otherwise fall back to error_log
+    actual_log_file = log_file or error_log
+    
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -129,31 +260,20 @@ def error_boundary(
                 return func(*args, **kwargs)
                 
             except ValidationError as e:
-                console.print(Panel(
-                    format_user_error(e),
-                    title="⚠️  Invalid Input",
-                    border_style="red",
-                    padding=(1, 2),
-                ))
+                handle_validation_error(e, console)
                 sys.exit(1)
                 
             except DataError as e:
-                console.print(Panel(
-                    format_user_error(e),
-                    title="📁 Data Problem",
-                    border_style="red",
-                    padding=(1, 2),
-                ))
-                sys.exit(2)
+                handle_data_error(e, console, actual_log_file)
+                sys.exit(1)
                 
-            except ConfigurationError as e:
-                console.print(Panel(
-                    format_user_error(e),
-                    title="⚙️  Configuration Problem",
-                    border_style="red",
-                    padding=(1, 2),
-                ))
-                sys.exit(3)
+            except SystemError as e:
+                handle_system_error(e, console, actual_log_file)
+                sys.exit(1)
+                
+            except ConfigError as e:
+                handle_config_error(e, console, actual_log_file)
+                sys.exit(1)
                 
             except KeyboardInterrupt:
                 console.print(
@@ -162,22 +282,8 @@ def error_boundary(
                 sys.exit(0)
                 
             except Exception as e:
-                # Log the full error for debugging
-                log_path = log_error(e, error_log)
-                
-                # Show user-friendly message
-                console.print(Panel(
-                    Text.from_markup(
-                        "[red]An unexpected error occurred.[/red]\n\n"
-                        f"Error details have been saved to:\n{log_path}\n\n"
-                        "Please report this issue if it continues.",
-                        justify="center",
-                    ),
-                    title="❌ Unexpected Error",
-                    border_style="red",
-                    padding=(1, 2),
-                ))
-                sys.exit(99)
+                handle_unexpected_error(e, console, actual_log_file)
+                sys.exit(1)
         
         return wrapper
     return decorator
@@ -194,44 +300,7 @@ def setup_exception_handler(
         console: Rich console for output
         error_log: Path to error log file
     """
-    if console is None:
-        console = _console
-    
-    def exception_handler(
-        exc_type: Type[BaseException],
-        exc_value: BaseException,
-        exc_traceback: Any
-    ) -> None:
-        """Handle uncaught exceptions"""
-        if issubclass(exc_type, KeyboardInterrupt):
-            # Handle Ctrl+C gracefully
-            console.print(
-                "\n[yellow]Interrupted. Ma'a salama! 🌙[/yellow]"
-            )
-            sys.exit(0)
-        
-        # Log the error
-        if exc_value and isinstance(exc_value, Exception):
-            log_path = log_error(exc_value, error_log)
-        else:
-            log_path = error_log or Path.home() / ".aysekai" / "error.log"
-        
-        # Show user-friendly message
-        console.print(Panel(
-            Text.from_markup(
-                "[red]An unexpected error occurred.[/red]\n\n"
-                f"Error details have been saved to:\n{log_path}\n\n"
-                "Please report this issue.",
-                justify="center",
-            ),
-            title="❌ Unexpected Error",
-            border_style="red",
-            padding=(1, 2),
-        ))
-        
-        sys.exit(99)
-    
-    sys.excepthook = exception_handler
+    setup_global_exception_handler()
 
 
 def with_retry(
